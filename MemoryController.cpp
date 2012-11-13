@@ -43,18 +43,11 @@
 
 using namespace DRAMSim;
 
-<<<<<<< HEAD
-MemoryController::MemoryController(MemorySystem *parent, CSVWriter &csvOut_, ostream &dramsim_log_) :
-		dramsim_log(dramsim_log_),
-		bankStates(NUM_RANKS, vector<BankState>(NUM_BANKS, dramsim_log)),
-		commandQueue(bankStates, dramsim_log_),
-=======
 ofstream myfile;
 ofstream transQsize;
 
 MemoryController::MemoryController(MemorySystem *parent, std::ofstream *outfile) :
 		commandQueue (CommandQueue(bankStates)),
->>>>>>> master
 		poppedBusPacket(NULL),
 		csvOut(csvOut_),
 		totalTransactions(0),
@@ -688,12 +681,10 @@ void MemoryController::update()
 	{
 		if (DEBUG_BUS)
 		{
-<<<<<<< HEAD
-			PRINTN(" -- MC Issuing to CPU bus : " << *returnTransaction[0]);
-=======
+
 			//PRINTN(" -- MC Issuing to CPU bus : ");
 			//returnTransaction[0].print();
->>>>>>> master
+
 		}
 		totalTransactions++;
 
