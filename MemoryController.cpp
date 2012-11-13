@@ -43,15 +43,31 @@
 
 using namespace DRAMSim;
 
+<<<<<<< HEAD
 MemoryController::MemoryController(MemorySystem *parent, CSVWriter &csvOut_, ostream &dramsim_log_) :
 		dramsim_log(dramsim_log_),
 		bankStates(NUM_RANKS, vector<BankState>(NUM_BANKS, dramsim_log)),
 		commandQueue(bankStates, dramsim_log_),
+=======
+ofstream myfile;
+ofstream transQsize;
+
+MemoryController::MemoryController(MemorySystem *parent, std::ofstream *outfile) :
+		commandQueue (CommandQueue(bankStates)),
+>>>>>>> master
 		poppedBusPacket(NULL),
 		csvOut(csvOut_),
 		totalTransactions(0),
 		refreshRank(0)
 {
+
+	myfile.open("parse.txt");
+	myfile.close();
+
+	transQsize.open("TRANSqueue.txt");
+	transQsize.close();
+	transQsize.open("TRANSqueue.txt", fstream::app);
+
 	//get handle on parent
 	parentMemorySystem = parent;
 
@@ -105,8 +121,15 @@ void MemoryController::receiveFromBus(BusPacket *bpacket)
 
 	if (DEBUG_BUS)
 	{
-		PRINTN(" -- MC Receiving From Data Bus : ");
-		bpacket->print();
+		myfile.open ("parse.txt", fstream::app);
+		myfile << "R ";
+		myfile  <<hex<< bpacket->physicalAddress << " ";
+		myfile  <<dec<< currentClockCycle << endl;
+		myfile.close ();
+
+		//original code commented out
+		//PRINTN(" -- MC Receiving From Data Bus : ");
+		//bpacket->print();
 	}
 
 	//add to return read data queue
@@ -220,8 +243,15 @@ void MemoryController::update()
 			//send to bus and print debug stuff
 			if (DEBUG_BUS)
 			{
-				PRINTN(" -- MC Issuing On Data Bus    : ");
-				writeDataToSend[0]->print();
+				myfile.open ("parse.txt", fstream::app);
+				myfile << "W ";
+				myfile  <<hex<< writeDataToSend[0]->physicalAddress << " ";
+				myfile  <<dec<< currentClockCycle << endl;
+				myfile.close ();
+
+				//original code
+				//PRINTN(" -- MC Issuing On Data Bus    : ");
+				//writeDataToSend[0]->print();
 			}
 
 			// queue up the packet to be sent
@@ -457,8 +487,8 @@ void MemoryController::update()
 		//issue on bus and print debug
 		if (DEBUG_BUS)
 		{
-			PRINTN(" -- MC Issuing On Command Bus : ");
-			poppedBusPacket->print();
+			//PRINTN(" -- MC Issuing On Command Bus : ");
+			//poppedBusPacket->print();
 		}
 
 		//check for collision on bus
@@ -472,6 +502,18 @@ void MemoryController::update()
 
 	}
 
+	// Added by Jack to keep track of Trans Q size
+	/*if (transactionQueue.size() == TRANS_QUEUE_DEPTH)
+	{
+		cout << "TransQ is Full" << endl;
+		exit(-1);
+	}*/
+	/*if( (currentClockCycle % 100000 == 0) || (currentClockCycle == 10000) )
+	{
+		transQsize << currentClockCycle << " " << transactionQueue.size() << endl;
+	}*/
+
+	//Adding new transaction
 	for (size_t i=0;i<transactionQueue.size();i++)
 	{
 		//pop off top transaction from queue
@@ -488,8 +530,8 @@ void MemoryController::update()
 
 		//if we have room, break up the transaction into the appropriate commands
 		//and add them to the command queue
-		if (commandQueue.hasRoomFor(2, newTransactionRank, newTransactionBank))
-		{
+		//Jack:if (commandQueue.hasRoomFor(2, newTransactionRank, newTransactionBank))
+		//jack:{
 			if (DEBUG_ADDR_MAP) 
 			{
 				PRINTN("== New Transaction - Mapping Address [0x" << hex << transaction->address << dec << "]");
@@ -545,11 +587,11 @@ void MemoryController::update()
 			 * lines, switching logic, decision logic)
 			 */
 			break;
-		}
+		/*jack:}
 		else // no room, do nothing this cycle
 		{
 			//PRINT( "== Warning - No room in command queue" << endl;
-		}
+		}jack:*/
 	}
 
 
@@ -646,7 +688,12 @@ void MemoryController::update()
 	{
 		if (DEBUG_BUS)
 		{
+<<<<<<< HEAD
 			PRINTN(" -- MC Issuing to CPU bus : " << *returnTransaction[0]);
+=======
+			//PRINTN(" -- MC Issuing to CPU bus : ");
+			//returnTransaction[0].print();
+>>>>>>> master
 		}
 		totalTransactions++;
 
@@ -754,6 +801,20 @@ bool MemoryController::addTransaction(Transaction *trans)
 	{
 		trans->timeAdded = currentClockCycle;
 		transactionQueue.push_back(trans);
+
+		//Added by Jack
+		if(DEBUG_BUS)
+		{
+				myfile.open ("parse.txt", fstream::app);
+				myfile << "+ ";
+				if(trans.transactionType == DATA_READ){myfile << "R ";}
+				else{myfile<< "W ";}
+				myfile << hex<< trans.address << " ";
+				myfile << dec<< trans.timeAdded<< endl;
+				myfile.close ();
+
+		}
+
 		return true;
 	}
 	else 
@@ -895,7 +956,7 @@ void MemoryController::printStats(bool finalStats)
 	{
 		PRINT( " ---  Latency list ("<<latencies.size()<<")");
 		PRINT( "       [lat] : #");
-		if (VIS_FILE_OUTPUT)
+		/*if (VIS_FILE_OUTPUT)
 		{
 			csvOut.getOutputStream() << "!!HISTOGRAM_DATA"<<endl;
 		}
@@ -920,12 +981,13 @@ void MemoryController::printStats(bool finalStats)
 					PRINT( "  b"<<j<<": "<<grandTotalBankAccesses[SEQUENTIAL(i,j)]);
 				}
 			}
-		}
+		}*/
 
 	}
 
 
 	PRINT(endl<< " == Pending Transactions : "<<pendingReadTransactions.size()<<" ("<<currentClockCycle<<")==");
+	PRINT("Max CMD Queue size =" << maxQsize << " ");
 	/*
 	for(size_t i=0;i<pendingReadTransactions.size();i++)
 		{

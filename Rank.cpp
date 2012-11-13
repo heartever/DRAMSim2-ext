@@ -83,8 +83,8 @@ void Rank::receiveFromBus(BusPacket *packet)
 {
 	if (DEBUG_BUS)
 	{
-		PRINTN(" -- R" << this->id << " Receiving On Bus    : ");
-		packet->print();
+		//PRINTN(" -- R" << this->id << " Receiving On Bus    : ");
+		//packet->print();
 	}
 	if (VERIFICATION_OUTPUT)
 	{
@@ -333,9 +333,9 @@ void Rank::update()
 
 		if (DEBUG_BUS)
 		{
-			PRINTN(" -- R" << this->id << " Issuing On Data Bus : ");
-			outgoingDataPacket->print();
-			PRINT("");
+			//PRINTN(" -- R" << this->id << " Issuing On Data Bus : ");
+			//outgoingDataPacket->print();
+			//PRINT("");
 		}
 
 	}

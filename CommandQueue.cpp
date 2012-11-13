@@ -46,8 +46,14 @@
 
 using namespace DRAMSim;
 
+<<<<<<< HEAD
 CommandQueue::CommandQueue(vector< vector<BankState> > &states, ostream &dramsim_log_) :
 		dramsim_log(dramsim_log_),
+=======
+ofstream CMDQsize; //Jack
+
+CommandQueue::CommandQueue(vector< vector<BankState> > &states) :
+>>>>>>> master
 		bankStates(states),
 		nextBank(0),
 		nextRank(0),
@@ -57,6 +63,12 @@ CommandQueue::CommandQueue(vector< vector<BankState> > &states, ostream &dramsim
 		refreshWaiting(false),
 		sendAct(true)
 {
+	//Jack
+	CMDQsize.open("CMDqueue.txt");
+	CMDQsize.close();
+	CMDQsize.open("CMDqueue.txt", fstream::app);
+	//Jack:End
+
 	//set here to avoid compile errors
 	currentClockCycle = 0;
 
@@ -135,22 +147,22 @@ void CommandQueue::enqueue(BusPacket *newBusPacket)
 	if (queuingStructure==PerRank)
 	{
 		queues[rank][0].push_back(newBusPacket);
-		if (queues[rank][0].size()>CMD_QUEUE_DEPTH)
+		/*if (queues[rank][0].size()>CMD_QUEUE_DEPTH)
 		{
 			ERROR("== Error - Enqueued more than allowed in command queue");
 			ERROR("						Need to call .hasRoomFor(int numberToEnqueue, unsigned rank, unsigned bank) first");
 			exit(0);
-		}
+		}*/
 	}
 	else if (queuingStructure==PerRankPerBank)
 	{
 		queues[rank][bank].push_back(newBusPacket);
-		if (queues[rank][bank].size()>CMD_QUEUE_DEPTH)
+		/*if (queues[rank][bank].size()>CMD_QUEUE_DEPTH)
 		{
 			ERROR("== Error - Enqueued more than allowed in command queue");
 			ERROR("						Need to call .hasRoomFor(int numberToEnqueue, unsigned rank, unsigned bank) first");
 			exit(0);
-		}
+		}*/
 	}
 	else
 	{
@@ -191,6 +203,19 @@ bool CommandQueue::pop(BusPacket **busPacket)
 		 Otherwise, it starts looking for rows to close (in open page)
 	*/
 
+
+	/**************************************************************************************************************************
+	 * Modified by Jack:
+	 *
+	 * Changing the search of the queue size to speed up execution time. Instead of searching through the entire Q for an
+	 * issuable packet. We re-strict the search to be CMD_QUEUE_DEPTH, which can be set in the ini file
+	 *
+	 * Only changed coded in the Open page case, since all our experiments are doen in open page mode
+	 *
+	 * Also, changed the ::hasRoomFor function to always return true, so that we have an infinite Q essentially and the
+	 * Transaction queue size will always be 1
+	 *
+	 **************************************************************************************************************************/
 	if (rowBufferPolicy==ClosePage)
 	{
 		bool sendingREF = false;
@@ -325,8 +350,19 @@ bool CommandQueue::pop(BusPacket **busPacket)
 			if (!foundIssuable) return false;
 		}
 	}
+
+	/**************************************************************************************************************
+	 * Modified by Jack for open page to search through only a subset of command in the CMD_Q of each rank/bank
+	 * All modified lines are commented out like this: //Jack: lines commented out
+	 * and immediate below the commented out line is the new code to be used instead
+	 * if no new code is inserted then, a line will be //Jack: no new code, just commented out unnecessary code
+	 **************************************************************************************************************/
 	else if (rowBufferPolicy==OpenPage)
 	{
+		//Jack:
+		size_t jacksize;
+		maxQsize = 0;
+
 		bool sendingREForPRE = false;
 		if (refreshWaiting)
 		{
@@ -342,7 +378,17 @@ bool CommandQueue::pop(BusPacket **busPacket)
 					//search for commands going to an open row
 					vector <BusPacket *> &refreshQueue = getCommandQueue(refreshRank,b);
 
-					for (size_t j=0;j<refreshQueue.size();j++)
+					//Jack:for (size_t j=0;j<refreshQueue.size();j++)
+					if(refreshQueue.size() <= CMD_QUEUE_DEPTH)
+					{
+						jacksize = refreshQueue.size();
+					}
+					else
+					{
+						jacksize = CMD_QUEUE_DEPTH;
+					}
+					//JackEnd
+					for (size_t j=0;j<jacksize;j++)
 					{
 						BusPacket *packet = refreshQueue[j];
 						//if a command in the queue is going to the same row . . .
@@ -413,7 +459,23 @@ bool CommandQueue::pop(BusPacket **busPacket)
 				if (!queue.empty() && !((nextRank == refreshRank) && refreshWaiting))
 				{
 					//search from the beginning to find first issuable bus packet
-					for (size_t i=0;i<queue.size();i++)
+
+					//Jack:for (size_t i=0;i<queue.size();i++)
+					if(queue.size() <= CMD_QUEUE_DEPTH)
+					{
+							jacksize = queue.size();
+					}
+					else
+					{
+							jacksize = CMD_QUEUE_DEPTH;
+					}
+
+					if(maxQsize < queue.size())
+					{
+						maxQsize = queue.size();
+					}
+					//Jack:End
+					for (size_t i=0;i<jacksize;i++)
 					{
 						BusPacket *packet = queue[i];
 						if (isIssuable(packet))
@@ -498,7 +560,17 @@ bool CommandQueue::pop(BusPacket **busPacket)
 					//check if bank is open
 					if (bankStates[nextRankPRE][nextBankPRE].currentBankState == RowActive)
 					{
-						for (size_t i=0;i<queue.size();i++)
+						//Jack:for (size_t i=0;i<queue.size();i++)
+						if(queue.size() <= CMD_QUEUE_DEPTH)
+						{
+								jacksize = queue.size();
+						}
+						else
+						{
+								jacksize = CMD_QUEUE_DEPTH;
+						}
+						//Jack:End
+						for (size_t i=0;i<jacksize;i++)
 						{
 							//if there is something going to that bank and row, then we don't want to send a PRE
 							if (queue[i]->bank == nextBankPRE &&
@@ -557,14 +629,38 @@ bool CommandQueue::pop(BusPacket **busPacket)
 //check if a rank/bank queue has room for a certain number of bus packets
 bool CommandQueue::hasRoomFor(unsigned numberToEnqueue, unsigned rank, unsigned bank)
 {
-	vector<BusPacket *> &queue = getCommandQueue(rank, bank); 
-	return (CMD_QUEUE_DEPTH - queue.size() >= numberToEnqueue);
+	//Jack:vector<BusPacket *> &queue = getCommandQueue(rank, bank);
+	//Jack:return (CMD_QUEUE_DEPTH - queue.size() >= numberToEnqueue);
+	return true;
 }
 
 //prints the contents of the command queue
 void CommandQueue::print()
 {
-	if (queuingStructure==PerRank)
+		//Added by Jack to get Q-size vs time in an output file
+	    if (queuingStructure==PerRank)
+		{
+	    	if( (currentClockCycle % 100000 == 0) || (currentClockCycle == 10000) )
+	    	{
+				for (size_t i=0;i<NUM_RANKS;i++)
+				{
+					CMDQsize << i << " " << currentClockCycle << " " << queues[i][0].size() << endl;
+				}
+	    	}
+		}
+		else if (queuingStructure==PerRankPerBank)
+		{
+			if( (currentClockCycle % 100000 == 0) || (currentClockCycle == 10000) )
+			{
+				for (size_t j=0;j<NUM_BANKS;j++)
+				{
+					CMDQsize << j << " " << currentClockCycle << " " << queues[0][j].size() << endl;
+				}
+			}
+		}
+
+
+	/*if (queuingStructure==PerRank)
 	{
 		PRINT(endl << "== Printing Per Rank Queue" );
 		for (size_t i=0;i<NUM_RANKS;i++)
@@ -595,7 +691,7 @@ void CommandQueue::print()
 				}
 			}
 		}
-	}
+	}*/
 }
 
 /** 
