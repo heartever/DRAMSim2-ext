@@ -46,8 +46,10 @@ using namespace DRAMSim;
 ofstream myfile;
 ofstream transQsize;
 
-MemoryController::MemoryController(MemorySystem *parent, std::ofstream *outfile) :
-		commandQueue (CommandQueue(bankStates)),
+MemoryController::MemoryController(MemorySystem *parent, CSVWriter &csvOut_, ostream &dramsim_log_) :
+		dramsim_log(dramsim_log_),
+		bankStates(NUM_RANKS, vector<BankState>(NUM_BANKS, dramsim_log)),
+		commandQueue(bankStates, dramsim_log_),
 		poppedBusPacket(NULL),
 		csvOut(csvOut_),
 		totalTransactions(0),
@@ -798,10 +800,10 @@ bool MemoryController::addTransaction(Transaction *trans)
 		{
 				myfile.open ("parse.txt", fstream::app);
 				myfile << "+ ";
-				if(trans.transactionType == DATA_READ){myfile << "R ";}
+				if(trans->transactionType == DATA_READ){myfile << "R ";}
 				else{myfile<< "W ";}
-				myfile << hex<< trans.address << " ";
-				myfile << dec<< trans.timeAdded<< endl;
+				myfile << hex<< trans->address << " ";
+				myfile << dec<< trans->timeAdded<< endl;
 				myfile.close ();
 
 		}

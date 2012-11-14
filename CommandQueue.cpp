@@ -49,7 +49,8 @@ using namespace DRAMSim;
 
 ofstream CMDQsize; //Jack
 
-CommandQueue::CommandQueue(vector< vector<BankState> > &states) :
+CommandQueue::CommandQueue(vector< vector<BankState> > &states, ostream &dramsim_log_) :
+		dramsim_log(dramsim_log_),
 		bankStates(states),
 		nextBank(0),
 		nextRank(0),
